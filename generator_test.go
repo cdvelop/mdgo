@@ -7,6 +7,16 @@ import (
 	"testing"
 )
 
+// writerWithDirCreation returns a writer function that creates directories before writing
+func writerWithDirCreation() func(name string, data []byte) error {
+	return func(name string, data []byte) error {
+		if err := os.MkdirAll(filepath.Dir(name), 0755); err != nil {
+			return err
+		}
+		return os.WriteFile(name, data, 0644)
+	}
+}
+
 func TestExtractCreatesFile(t *testing.T) {
 	tmp := t.TempDir()
 	sourceDir := filepath.Join(tmp, "templates")
@@ -50,8 +60,9 @@ func noCache() {
 		t.Fatalf("writing test markdown: %v", err)
 	}
 
-	// Create Mdgo instance
-	m := New(tmp, outputDir).InputPath("templates/server.md")
+	// Create Mdgo instance (provide writer and reader functions)
+	m := New(tmp, outputDir, writerWithDirCreation()).
+		InputPath("templates/server.md", func(name string) ([]byte, error) { return os.ReadFile(filepath.Join(tmp, name)) })
 
 	// Ensure output file doesn't exist yet
 	outputFile := filepath.Join(outputDir, "main.go")
@@ -110,8 +121,9 @@ func TestExtractDoesNotOverwriteIfSame(t *testing.T) {
 		t.Fatalf("writing markdown: %v", err)
 	}
 
-	// Create Mdgo instance
-	m := New(tmp, outputDir).InputPath("templates/test.md")
+	// Create Mdgo instance (provide writer and reader functions)
+	m := New(tmp, outputDir, func(name string, data []byte) error { return os.WriteFile(name, data, 0644) }).
+		InputPath("templates/test.md", func(name string) ([]byte, error) { return os.ReadFile(filepath.Join(tmp, name)) })
 
 	// First extraction
 	outputFile := "test.go"
@@ -169,7 +181,8 @@ func TestExtractOverwritesIfDifferent(t *testing.T) {
 	}
 
 	// Extract (should overwrite)
-	m := New(tmp, outputDir).InputPath("templates/test.md")
+	m := New(tmp, outputDir, func(name string, data []byte) error { return os.WriteFile(name, data, 0644) }).
+		InputPath("templates/test.md", func(name string) ([]byte, error) { return os.ReadFile(filepath.Join(tmp, name)) })
 	if err := m.Extract("test.go"); err != nil {
 		t.Fatalf("extract failed: %v", err)
 	}
@@ -194,7 +207,8 @@ func TestExtractConcatenatesMultipleBlocks(t *testing.T) {
 	// Markdown with multiple Go blocks
 	md := "Some text\n```go\npackage main\n\nfunc A(){}\n```\nMore\n```go\nfunc B(){}\n```\n"
 
-	m := New(tmp, tmp).InputByte([]byte(md))
+	m := New(tmp, tmp, func(name string, data []byte) error { return os.WriteFile(name, data, 0644) }).
+		InputByte([]byte(md))
 
 	// Extract using byte slice
 	if err := m.Extract("output.go"); err != nil {
@@ -220,7 +234,8 @@ func TestExtractConcatenatesMultipleBlocks(t *testing.T) {
 
 func TestExtractWithByteSlice(t *testing.T) {
 	tmp := t.TempDir()
-	m := New(tmp, tmp).InputByte([]byte("# Test\n```go\npackage test\n```"))
+	m := New(tmp, tmp, func(name string, data []byte) error { return os.WriteFile(name, data, 0644) }).
+		InputByte([]byte("# Test\n```go\npackage test\n```"))
 
 	if err := m.Extract("test.go"); err != nil {
 		t.Fatalf("extract with byte slice failed: %v", err)

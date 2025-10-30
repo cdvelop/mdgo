@@ -2,14 +2,12 @@ package mdgo
 
 import (
 	. "github.com/cdvelop/tinystring"
-	"os"
-	"path/filepath"
 )
 
 // writeIfDifferent writes content to file only if it doesn't exist or content is different
 func (m *Mdgo) writeIfDifferent(filePath, content string) error {
 	// Check if file exists
-	existingContent, err := os.ReadFile(filePath)
+	existingContent, err := m.readFile(filePath)
 	if err == nil {
 		// File exists, check if content is different
 		if string(existingContent) == content {
@@ -18,16 +16,9 @@ func (m *Mdgo) writeIfDifferent(filePath, content string) error {
 		}
 	}
 
-	// File doesn't exist or content is different, write it
-	// Ensure directory exists
-	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return Errf("creating directory %s: %w", dir, err)
-	}
-
 	// Write the file
-	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
-		return Errf("writing file: %w", err)
+	if err := m.writeFile(filePath, []byte(content)); err != nil {
+		return Errf("writing file: %v", err)
 	}
 
 	m.logger("Written file", filePath)
