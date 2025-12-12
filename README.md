@@ -90,4 +90,48 @@ necessary directories (as shown above). If you use a custom writer (for example
 to capture output in memory or to write into an embed FS), `mdgo` will call the
 writer exactly with the destination path and file content.
 
+5) Update a Section in a Markdown File
+
+You can also use `mdgo` to update specific sections of a markdown file using HTML comments as markers.
+
+```go
+package main
+
+import (
+	"log"
+	"os"
+
+	"github.com/cdvelop/mdgo"
+)
+
+func main() {
+	// 1. Configure mdgo with reader/writer
+	writer := func(name string, data []byte) error {
+		return os.WriteFile(name, data, 0644)
+	}
+
+	m := mdgo.New(".", ".", writer)
+	m.InputPath("README.md", func(name string) ([]byte, error) {
+		return os.ReadFile(name)
+	})
+	m.SetLogger(log.Println)
+
+	// 2. Define content
+	newContent := "This content will be placed between markers"
+
+	// 3. Update the section
+	// This looks for:
+	// <!-- START_SECTION:MY_SECTION -->
+	// ... content ...
+	// <!-- END_SECTION:MY_SECTION -->
+	//
+	// If the section doesn't exist, it can verify syntax but won't insert it unless the file is empty/new.
+	// You can optionally pass an "afterLine" argument (number as string) to suggest insertion position if new.
+	
+	if err := m.UpdateSection("MY_SECTION", newContent); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
 
