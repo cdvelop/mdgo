@@ -1,7 +1,7 @@
 package mdgo
 
 import (
-	. "github.com/cdvelop/tinystring"
+	"fmt"
 )
 
 // writeIfDifferent writes content to file only if it doesn't exist or content is different
@@ -18,7 +18,7 @@ func (m *Mdgo) writeIfDifferent(filePath, content string) error {
 
 	// Write the file
 	if err := m.writeFile(filePath, []byte(content)); err != nil {
-		return Errf("writing file: %v", err)
+		return fmt.Errorf("writing file: %v", err)
 	}
 
 	m.logger("Written file", filePath)

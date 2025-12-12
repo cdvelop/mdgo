@@ -1,7 +1,9 @@
 package mdgo
 
 import (
-	. "github.com/cdvelop/tinystring"
+	"errors"
+	"fmt"
+	"path/filepath"
 )
 
 type Mdgo struct {
@@ -21,7 +23,7 @@ func New(rootDir, destination string, writerFile func(name string, data []byte) 
 	return &Mdgo{
 		rootDir:     rootDir,
 		destination: destination,
-		readFile:    func(name string) ([]byte, error) { return nil, Err("not configure reader func") },
+		readFile:    func(name string) ([]byte, error) { return nil, errors.New("not configure reader func") },
 		writeFile:   writerFile,
 		logger:      func(...any) {},
 	}
@@ -62,31 +64,31 @@ func (m *Mdgo) InputEmbed(path string, readerFile func(name string) ([]byte, err
 // The output file extension determines which code type to extract (.go, .js, .css)
 func (m *Mdgo) Extract(outputFile string) error {
 	if m.destination == "" {
-		return Errf("destination not set; provide destination when calling New(rootDir, destination)")
+		return fmt.Errorf("destination not set; provide destination when calling New(rootDir, destination)")
 	}
 
 	// Read markdown from the configured input
 	markdown, err := m.readFile(m.inputPath)
 	if err != nil {
-		return Errf("reading file %s: %v", m.inputPath, err)
+		return fmt.Errorf("reading file %s: %v", m.inputPath, err)
 	}
 
 	// Determine code type from output file extension
 	codeType := m.getCodeType(outputFile)
 	if codeType == "" {
-		return Errf("unsupported file extension: %s", Convert(outputFile).PathExt().String())
+		return fmt.Errorf("unsupported file extension: %s", filepath.Ext(outputFile))
 	}
 
 	// Extract code blocks
 	code := m.extractCodeBlocks(string(markdown), codeType)
 	if code == "" {
-		return Errf("no %s code blocks found in markdown", codeType)
+		return fmt.Errorf("no %s code blocks found in markdown", codeType)
 	}
 
 	// Write to output file
-	outputPath := PathJoin(m.destination, outputFile).String()
+	outputPath := filepath.Join(m.destination, outputFile)
 	if err := m.writeIfDifferent(outputPath, code); err != nil {
-		return Errf("writing output file: %v", err)
+		return fmt.Errorf("writing output file: %v", err)
 	}
 
 	if m.logger != nil {
@@ -98,7 +100,7 @@ func (m *Mdgo) Extract(outputFile string) error {
 
 // getCodeType determines the code type from file extension
 func (m *Mdgo) getCodeType(outputFile string) string {
-	ext := Convert(outputFile).PathExt().String()
+	ext := filepath.Ext(outputFile)
 	switch ext {
 	case ".go":
 		return "go"

@@ -1,5 +1,3 @@
 module github.com/cdvelop/mdgo
 
 go 1.25.2
-
-require github.com/cdvelop/tinystring v0.11.0
